@@ -16,7 +16,7 @@ const images = [
 	},
 	{
 		file: 'simplify.png',
-		prompt: 'Editorial 16:9 keynote slide artwork, no words, no logos. A visually cluttered software workshop transforming into one calm elegant command surface, duplicate controls folding away into clean geometry, warm daylight, restrained paper and glass textures, sophisticated conceptual illustration.'
+		prompt: 'Editorial 16:9 keynote slide artwork, no words, no logos. A dramatic futuristic trash can as the heroic central object, sleek polished metal and luminous glass, vaporizing a storm of obsolete software panels, duplicate controls, and interface clutter into elegant clean light. The left side begins dense and chaotic, the right side opens into calm architectural space, cinematic contrast, premium magazine illustration, visually witty but sophisticated.'
 	},
 	{
 		file: 'value.png',
