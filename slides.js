@@ -3,7 +3,8 @@ const progress = document.querySelector('.progress');
 const currentSlide = document.querySelector('#current-slide');
 const previousButton = document.querySelector('[data-direction="previous"]');
 const nextButton = document.querySelector('[data-direction="next"]');
-let activeSlide = 0;
+const requestedSlide = Number.parseInt(new URLSearchParams(window.location.search).get('slide') ?? '', 10);
+let activeSlide = Number.isInteger(requestedSlide) ? Math.max(0, Math.min(slides.length - 1, requestedSlide - 1)) : 0;
 
 const dots = slides.map((slide, index) => {
 	const dot = document.createElement('button');

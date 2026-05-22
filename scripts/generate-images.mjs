@@ -1,13 +1,21 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const model = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-2';
 const apiKey = process.env.OPENAI_API_KEY;
-const outputDirectory = path.resolve('images');
+const candidateCount = Number.parseInt(process.env.IMAGE_CANDIDATES ?? '0', 10);
+const outputDirectory = candidateCount > 0 ? path.resolve('images/candidates') : path.resolve('images');
+
+const candidateDirections = [
+	'Alternate composition: a strong uncluttered hero focal point with generous negative space around the outer edges for slide cropping.',
+	'Alternate composition: cinematic perspective with the subject fully contained in the safe central field and no important details cut by a frame.',
+	'Alternate composition: a layered editorial tableau with the clearest storytelling details concentrated away from the extreme edges.'
+];
 
 if (!apiKey) {
 	throw new Error('OPENAI_API_KEY is required.');
 }
+
 
 const images = [
 	{
@@ -44,7 +52,23 @@ const images = [
 	}
 ];
 
-async function generateImage(image) {
+async function generateImage(image, candidateIndex) {
+	const candidateDirection = candidateIndex === undefined ? '' : ` ${candidateDirections[candidateIndex]}`;
+	const file = candidateIndex === undefined
+		? image.file
+		: image.file.replace('.png', `-candidate-${candidateIndex + 1}.png`);
+	const outputPath = path.join(outputDirectory, file);
+
+	if (candidateIndex !== undefined) {
+		try {
+			await access(outputPath);
+			console.log(`Kept ${file}`);
+			return;
+		} catch {
+			// Candidate has not been generated yet.
+		}
+	}
+
 	const response = await fetch('https://api.openai.com/v1/images/generations', {
 		method: 'POST',
 		headers: {
@@ -53,7 +77,7 @@ async function generateImage(image) {
 		},
 		body: JSON.stringify({
 			model,
-			prompt: image.prompt,
+			prompt: `${image.prompt}${candidateDirection}`,
 			size: '1536x864',
 			quality: 'medium',
 			output_format: 'png'
@@ -61,20 +85,26 @@ async function generateImage(image) {
 	});
 
 	if (!response.ok) {
-		throw new Error(`${image.file}: ${response.status} ${await response.text()}`);
+		throw new Error(`${file}: ${response.status} ${await response.text()}`);
 	}
 
 	const payload = await response.json();
 	const encodedImage = payload.data?.[0]?.b64_json;
 	if (typeof encodedImage !== 'string') {
-		throw new Error(`${image.file}: API response did not contain base64 image data.`);
+		throw new Error(`${file}: API response did not contain base64 image data.`);
 	}
 
-	await writeFile(path.join(outputDirectory, image.file), Buffer.from(encodedImage, 'base64'));
-	console.log(`Generated ${image.file}`);
+	await writeFile(outputPath, Buffer.from(encodedImage, 'base64'));
+	console.log(`Generated ${file}`);
 }
 
 await mkdir(outputDirectory, { recursive: true });
 for (const image of images) {
-	await generateImage(image);
+	if (candidateCount > 0) {
+		for (let candidateIndex = 0; candidateIndex < Math.min(candidateCount, candidateDirections.length); candidateIndex++) {
+			await generateImage(image, candidateIndex);
+		}
+	} else {
+		await generateImage(image);
+	}
 }
